@@ -1,0 +1,70 @@
+---
+- name: Install XMR mining software
+  hosts: all
+  vars:
+    pool_host: gulf.moneroocean.stream:10128
+    worker_name: xmr-miner-1
+    ansible_python_interpreter: /usr/bin/python3
+    payout_account: "ABCDEFGHIJKLMNOP..."
+    install_dir: "/home/{{user}}/mining"
+    build_dir:   "{{ install_dir }}/build"
+    screen_session: "miner"
+    exe_path: "{{ build_dir }}/xmrig"
+    begin_mining_command: "{{ exe_path }} -o {{ pool_host }} -u {{ payout_account }} -p {{ worker_name }}"
+
+  tasks:
+  - name: Create dest dir
+    file:
+      path: "{{install_dir}}"
+      state: directory
+
+  - name: Install deps
+    apt:
+      name: 
+        - git
+        - build-essential
+        - cmake
+        - libuv1-dev
+        - libssl-dev
+        - libhwloc-dev
+        - screen
+      state: present
+    become: yes
+
+  - name: Clone git repo
+    git:
+      repo: 'https://github.com/xmrig/xmrig.git'
+      dest: "{{install_dir}}"
+
+  - name: Check if build directory already exists or not
+    stat:
+      path: "{{ build_dir }}"
+    register: build_location
+  
+  - name: Build directory
+    file:
+      path: "{{build_dir}}"
+      state: directory
+    when: build_location is not defined and not build_location.exists
+ 
+  - name: Check if xmr exe exists
+    stat:
+      path: "{{ exe_path }}"
+    register: exe_location
+
+  - name: Build from source
+    command: 
+      cmd: cmake ..
+      chdir: "{{build_dir}}"
+    when: exe_location is not defined and not exe_location.exists
+
+  - name: Run make command
+    make:
+      chdir: "{{build_dir}}"
+    when: exe_location is not defined and not exe_location.exists
+
+  - name: Install crontab for case of reboot
+    cron:
+      name: "Start xmr mining on reboot"
+      special_time: reboot
+      job: "/usr/bin/screen -m -d -S {{ screen_session }} {{ begin_mining_command }}"
