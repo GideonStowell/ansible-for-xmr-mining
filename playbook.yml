@@ -2,24 +2,27 @@
 - name: Install XMR mining software
   hosts: all
   vars:
-    pool_host: gulf.moneroocean.stream:10128
-    worker_name: xmr-miner-1
+    pool_host: rx.unmineable.com:3333
+    worker_name: xmrig-1
     ansible_python_interpreter: /usr/bin/python3
-    payout_account: "ABCDEFGHIJKLMNOP..."
-    install_dir: "/home/{{user}}/mining"
+    token: "XXX"
+    payout_account: "ABCEDFGHJIKL..."
+    referral_code: "kb9z-j3no"
+    install_dir: "/home/{{ansible_user}}/mining"
     build_dir:   "{{ install_dir }}/build"
     screen_session: "miner"
     exe_path: "{{ build_dir }}/xmrig"
-    begin_mining_command: "{{ exe_path }} -o {{ pool_host }} -u {{ payout_account }} -p {{ worker_name }}"
+    begin_mining_command: "{{ exe_path }} -o {{ pool_host }} -a rx -k -u {{ token }}:{{ payout_account }}.{{ worker_name }}#{{ referral_code }} "
 
   tasks:
   - name: Create dest dir
     file:
       path: "{{install_dir}}"
       state: directory
-
+  
   - name: Install deps
     apt:
+      update_cache: yes
       name: 
         - git
         - build-essential
@@ -40,12 +43,12 @@
     stat:
       path: "{{ build_dir }}"
     register: build_location
-  
+
   - name: Build directory
     file:
       path: "{{build_dir}}"
       state: directory
-    when: build_location is not defined and not build_location.exists
+    when: not build_location.stat.exists
  
   - name: Check if xmr exe exists
     stat:
@@ -56,15 +59,19 @@
     command: 
       cmd: cmake ..
       chdir: "{{build_dir}}"
-    when: exe_location is not defined and not exe_location.exists
+    when: not build_location.stat.exists
 
   - name: Run make command
     make:
       chdir: "{{build_dir}}"
-    when: exe_location is not defined and not exe_location.exists
+    when: not exe_location.stat.exists
 
   - name: Install crontab for case of reboot
     cron:
       name: "Start xmr mining on reboot"
       special_time: reboot
       job: "/usr/bin/screen -m -d -S {{ screen_session }} {{ begin_mining_command }}"
+
+  - name: Rebooting machine
+    command: /sbin/shutdown -r +1
+    become: yes
