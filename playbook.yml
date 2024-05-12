@@ -7,7 +7,7 @@
     ansible_python_interpreter: /usr/bin/python3
     token: "XXX"
     payout_account: "ABCEDFGHJIKL..."
-    referral_code: "kb9z-j3no"
+    referral_code: "66p1-atgf"
     install_dir: "/home/{{ansible_user}}/mining"
     build_dir:   "{{ install_dir }}/build"
     screen_session: "miner"
